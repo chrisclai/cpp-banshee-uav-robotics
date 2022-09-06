@@ -18,7 +18,7 @@ while key != ord('q'):
 
     a_id = -1
     if not (ids is None):
-        a_id = ids(0)
+        a_id = ids[0]
 
     match a_id:
         case 0:
@@ -39,5 +39,5 @@ while key != ord('q'):
 
     # show image
     cv2.imshow("drone", img)
-    cv2.waitKey(1)
+    key = cv2.waitKey(1)
     cv2.destroyAllWindows()
