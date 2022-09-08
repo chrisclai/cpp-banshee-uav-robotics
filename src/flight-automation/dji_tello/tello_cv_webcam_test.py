@@ -27,7 +27,7 @@ while key != ord('q'):
 
     a_id = -1
     if not (ids is None):
-        a_id = ids(0)
+        a_id = ids[0]
 
     match a_id:
         case 0:
