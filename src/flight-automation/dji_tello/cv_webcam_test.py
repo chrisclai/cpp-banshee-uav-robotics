@@ -34,6 +34,7 @@ while key != ord('q'):
                    "integration of this task will be with Comms team and the powerline detection script) "
         case 2:
             text = "AR Marker Dict 6x6, ID 2 - Do a flip (Just for fun, you can choose what tricks the drone does)"
+
         case 3:
             text = "AR Marker Dict 6x6, ID 3 - Land in a safe location"
         case _:
