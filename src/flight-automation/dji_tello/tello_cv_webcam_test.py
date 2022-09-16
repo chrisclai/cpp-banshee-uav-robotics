@@ -1,40 +1,31 @@
+import math
+
 from djitellopy import Tello
 import cv2
 import aruco_draw
 
+# constants
+x_P = 0.3
+y_P = 0.3
+lateral_P = 0.3
+box_size = 100
+
+# connect tello drone to python file
 tello = Tello()
 
 tello.connect()
 
-# https://djitellopy.readthedocs.io/en/latest/tello/#djitellopy.tello.Tello.connect_to_wifi
-# not sure if the following line needs to be included:
-# tello.connect_to_wifi(ssid, password)
 tello.streamon()
 
 frame_read = tello.get_frame_read()
 
-# need to change to a
-key = cv2.waitKey(1)
-x_P = 0.3
-y_P = 0.3
-lateral_P = 0.3
-box_size = 200
+
+
 tello.send_rc_control(0, 0, 0, 0)
-print(tello.get_battery())
 tello.takeoff()
 land = False
 
-
-async def g():
-    # Pause here and come back to g() when f() is ready
-    r = await input("press q to land")
-    if r == "q":
-        land = True
-        tello.land()
-    return 0
-
-
-while key != ord('q') and land is False:
+while not land:
 
     if not (tello.get_battery() == 0):
 
@@ -63,6 +54,19 @@ while key != ord('q') and land is False:
                     print("acorner" + str(a_corner))
                     average_x_position += a_corner[0]
                     average_y_position += a_corner[1]
+                the_corner = corner[0]
+                bottom_left_corner = the_corner[0]
+                top_right_corner = the_corner[2]
+                top_left_corner = the_corner[1]
+                bottom_right_corner = the_corner[3]
+                print(bottom_left_corner)
+                print(top_right_corner)
+                print(top_left_corner)
+                print(bottom_right_corner)
+                diagonal1 = math.sqrt((bottom_left_corner[0] + top_left_corner[0]) ** 2 + (bottom_left_corner[1] + top_left_corner[1]) ** 2)
+                diagonal2 = math.sqrt((top_left_corner[0] + bottom_right_corner[0]) ** 2 + (top_left_corner[1] + bottom_right_corner[1]) ** 2)
+                area = diagonal2 * diagonal1/2
+
                 height, width = img.shape[:2]
                 average_x_position /= 4
                 average_y_position /= 4
@@ -86,6 +90,11 @@ while key != ord('q') and land is False:
                 print(x_movement)
                 final_x_movement = 0
                 final_y_movement = 0
+                if area < (box_size * box_size):
+                    final_y_movement = 20
+                elif area > (box_size * box_size):
+                    final_y_movement = -20
+
                 if x_movement > 10:
                     final_x_movement = 10
                     pass
@@ -93,7 +102,8 @@ while key != ord('q') and land is False:
                     final_x_movement = -10
                     pass
 
-                tello.send_rc_control(final_x_movement, -2, 0, 0)
+                tello.send_rc_control(final_x_movement, final_y_movement, 0, 0)
+                print("area:" + str(area))
 
             case 1:
                 text = "AR Marker Dict 6x6, ID 1 - Increase height of drone to 250cm above its current location, " \
@@ -118,14 +128,14 @@ while key != ord('q') and land is False:
 
         # show image
         cv2.putText(img, text, (100, 100), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0))
+
+
         cv2.imshow("drone", img)
-
-        key = cv2.waitKey(1)
+        key = cv2.waitKey(10)
         if key == ord('q'):
-            tello.land()
             land = True
+            print("q")
 
-        cv2.destroyAllWindows()
         # telemetry print
         # from instructions:
         # Your script should always be reading the following sensor data from the tello:
@@ -136,13 +146,12 @@ while key != ord('q') and land is False:
         # - Barometer status
         # - Any other ToF (Time of Flight) data that can be read from the API
 
-        # print("speed (x,y,z): " + str(tello.get_speed_x()) + ", " + str(tello.get_speed_y()) + ", " + str(
-        #    tello.get_speed_z()))
+        print("speed (x,y,z): " + str(tello.get_speed_x()) + ", " + str(tello.get_speed_y()) + ", " + str(tello.get_speed_z()))
         print("yaw: " + str(tello.get_yaw()))
-        # print("pitch: " + str(tello.get_pitch()))
-        # print("roll: " + str(tello.get_roll()))
-        # print("battery status: " + str(tello.get_battery()))
-        # print("altitude: " + str(tello.get_height()))
-        # print("barometer:" + str(tello.get_barometer()))
-        g()
-tello.emergency()
+        print("pitch: " + str(tello.get_pitch()))
+        print("roll: " + str(tello.get_roll()))
+        print("battery status: " + str(tello.get_battery()))
+        print("altitude: " + str(tello.get_height()))
+        print("barometer:" + str(tello.get_barometer()))
+cv2.destroyAllWindows()
+tello.land()
