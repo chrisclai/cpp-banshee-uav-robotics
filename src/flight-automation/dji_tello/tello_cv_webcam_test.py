@@ -1,13 +1,21 @@
 import math
-
+import numpy as np
 from djitellopy import Tello
 import cv2
 import aruco_draw
+from simple_pid import PID
+import json
 
 # constants
-x_P = 0.3
-y_P = 0.3
-lateral_P = 0.3
+f = open('constants.json')
+
+constants = json.load(f)
+x_P = constants['x_P']
+x_I = constants['x_I']
+x_D = constants['x_D']
+y_P = constants['y_P']
+y_I = constants['y_I']
+y_D = constants['y_D']
 box_size = 100
 
 # connect tello drone to python file
@@ -17,13 +25,24 @@ tello.connect()
 
 tello.streamon()
 
+print(tello.get_battery())
+
 frame_read = tello.get_frame_read()
-
-
 
 tello.send_rc_control(0, 0, 0, 0)
 tello.takeoff()
 land = False
+
+x_pid = PID(x_P, x_I, x_D, setpoint=1)
+y_pid = PID(y_P, y_I, y_D, setpoint=1)
+
+x_pid.output_limits = (-20, 20)
+y_pid.output_limits = (-20, 20)
+
+
+def PolyArea(x, y):
+    return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+
 
 while not land:
 
@@ -44,9 +63,23 @@ while not land:
         text = ""
         match a_id:
             case 0:
+
                 text = "AR Marker Dict 6x6, ID 0 - Follow the marker around, attempting to keep a static distance and " \
                        "angle away. This means finding the area and center of the AR marker and creating an algorithm to " \
                        "position the drone a set distance depending on the location of the AR marker. "
+                x_pid.auto_mode = True
+                y_pid.auto_mode = True
+                f = open('constants.json')
+
+                constants = json.load(f)
+                x_P = constants['x_P']
+                x_I = constants['x_I']
+                x_D = constants['x_D']
+                y_P = constants['y_P']
+                y_I = constants['y_I']
+                y_D = constants['y_D']
+                x_pid.tunings = (x_P, x_I, x_D)
+                y_pid.tunings = (y_P, y_I, y_D)
                 average_x_position = 0
                 average_y_position = 0
                 corner = corners[0]
@@ -59,13 +92,10 @@ while not land:
                 top_right_corner = the_corner[2]
                 top_left_corner = the_corner[1]
                 bottom_right_corner = the_corner[3]
-                print(bottom_left_corner)
-                print(top_right_corner)
-                print(top_left_corner)
-                print(bottom_right_corner)
-                diagonal1 = math.sqrt((bottom_left_corner[0] + top_left_corner[0]) ** 2 + (bottom_left_corner[1] + top_left_corner[1]) ** 2)
-                diagonal2 = math.sqrt((top_left_corner[0] + bottom_right_corner[0]) ** 2 + (top_left_corner[1] + bottom_right_corner[1]) ** 2)
-                area = diagonal2 * diagonal1/2
+                x_values = [bottom_right_corner[0], top_right_corner[0], top_left_corner[0], bottom_right_corner[0]]
+                y_values = [bottom_right_corner[1], top_right_corner[1], top_left_corner[1], bottom_right_corner[1]]
+
+                area = PolyArea(x_values, y_values)
 
                 height, width = img.shape[:2]
                 average_x_position /= 4
@@ -85,25 +115,18 @@ while not land:
                 half_box_size = int(box_size / 2)
                 cv2.rectangle(img, (x_center - half_box_size, y_center - half_box_size),
                               (x_center + half_box_size, y_center + half_box_size), (255, 0, 0), 10)
-                x_movement = int(x_distance * x_P)
-                y_movement = int(y_distance * y_P)
-                print(x_movement)
-                final_x_movement = 0
-                final_y_movement = 0
-                if area < (box_size * box_size):
-                    final_y_movement = 20
-                elif area > (box_size * box_size):
-                    final_y_movement = -20
 
-                if x_movement > 10:
-                    final_x_movement = 10
-                    pass
-                elif x_movement < -10:
-                    final_x_movement = -10
-                    pass
+                y_distance = area - box_size * box_size
+                final_x_movement = x_pid(x_distance)
+
+                final_x_movement = -int(final_x_movement)
+
+                final_y_movement = y_pid(y_distance)
+                final_y_movement = -int(final_y_movement)
 
                 tello.send_rc_control(final_x_movement, final_y_movement, 0, 0)
                 print("area:" + str(area))
+                print("y_distance:" + str(y_distance))
 
             case 1:
                 text = "AR Marker Dict 6x6, ID 1 - Increase height of drone to 250cm above its current location, " \
@@ -123,18 +146,18 @@ while not land:
             case _:
                 text = "No marker detected, spin in a 360 circle until marker detected"
 
-                # tello.rotate_clockwise(1)
                 tello.send_rc_control(0, 0, 0, 0)
-
+                x_pid.auto_mode = False
+                y_pid.auto_mode = False
         # show image
         cv2.putText(img, text, (100, 100), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0))
-
 
         cv2.imshow("drone", img)
         key = cv2.waitKey(10)
         if key == ord('q'):
             land = True
-            print("q")
+            print("landing")
+            tello.streamoff()
 
         # telemetry print
         # from instructions:
@@ -146,7 +169,8 @@ while not land:
         # - Barometer status
         # - Any other ToF (Time of Flight) data that can be read from the API
 
-        print("speed (x,y,z): " + str(tello.get_speed_x()) + ", " + str(tello.get_speed_y()) + ", " + str(tello.get_speed_z()))
+        print("speed (x,y,z): " + str(tello.get_speed_x()) + ", " + str(tello.get_speed_y()) + ", " + str(
+            tello.get_speed_z()))
         print("yaw: " + str(tello.get_yaw()))
         print("pitch: " + str(tello.get_pitch()))
         print("roll: " + str(tello.get_roll()))
@@ -154,4 +178,5 @@ while not land:
         print("altitude: " + str(tello.get_height()))
         print("barometer:" + str(tello.get_barometer()))
 cv2.destroyAllWindows()
+
 tello.land()
