@@ -68,7 +68,7 @@ def fly_drone():
     match a_id:
         case 0:
             tello.send_rc_control(x, y, z, yaw)
-            tello.send_rc_control(0, 0, 0, 0)
+
         case 1:
             tello.move_up(100)
             tello.rotate_clockwise(360)
@@ -78,6 +78,7 @@ def fly_drone():
         case 3:
             land = True
         case _:
+            tello.send_rc_control(0, 0, 0, 0)
             pass
 
     # print("speed (x,y,z): " + str(tello.get_speed_x()) + ", " + str(tello.get_speed_y()) + ", " + str(
