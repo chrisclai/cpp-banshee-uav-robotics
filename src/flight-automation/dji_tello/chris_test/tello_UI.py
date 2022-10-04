@@ -20,6 +20,10 @@ class TelloUI(object):
             - Arrow keys: Forward, backward, left and right.
             - A and D: Counter clockwise and clockwise rotations (yaw)
             - W and S: Up and down.
+            - U: Flip forward
+            - H: Flip left
+            - J: Flip back
+            - K: Flip right
     """
 
     def __init__(self):
@@ -162,6 +166,14 @@ class TelloUI(object):
         elif key == pygame.K_l:  # land
             not self.tello.land()
             self.send_rc_control = False
+        elif key == pygame.K_u:  # flip forward
+            self.tello.flip('f')
+        elif key == pygame.K_h:  # flip left
+            self.tello.flip('l')
+        elif key == pygame.K_j:  # flip backward
+            self.tello.flip('b')
+        elif key == pygame.K_k:  # flip right
+            self.tello.flip('r')
 
     def update(self):
         """ 
@@ -174,12 +186,9 @@ class TelloUI(object):
                 self.tello.rotate_clockwise(360)
                 self.a_id = -1
             elif self.a_id == 1:
-                self.tello.move_up(30)
-                self.tello.move_down(30)
-                self.tello.move_up(30)
-                self.tello.move_down(30)
-                self.tello.move_up(30)
-                self.tello.move_down(30)
+                self.tello.move_up(100)
+                self.tello.flip('b')
+                self.tello.move_down(100)
                 self.a_id = -1
             elif self.a_id == 2:
                 self.tello.flip('f')
@@ -198,6 +207,11 @@ class TelloUI(object):
             else:
                 self.tello.send_rc_control(self.left_right_velocity, self.for_back_velocity,
                     self.up_down_velocity, self.yaw_velocity)
+        else:
+            if self.a_id == 3:
+                self.a_id = -1
+                self.tello.takeoff()
+                self.send_rc_control = True
 
 def main():
     run_tello = TelloUI()
