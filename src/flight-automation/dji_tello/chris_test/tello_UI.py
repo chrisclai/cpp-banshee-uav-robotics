@@ -12,7 +12,7 @@ FPS = 120
 
 
 class TelloUI(object):
-    """ Maintains the Tello display and moves it through the keyboard keys.
+    """ Maintains the Tello display and moves it through the keyboard keys.x
         Press escape key to quit.
         The controls are:
             - T: Takeoff
@@ -83,7 +83,7 @@ class TelloUI(object):
                 break
 
             self.screen.fill([0, 0, 0])
-
+    
             frame = frame_read.frame
 
             # Find AR Markers
@@ -91,8 +91,8 @@ class TelloUI(object):
                 corners, ids = aruco_detect.findArucoMarkers(frame, 6, 50)
                 aruco_detect.centerloc(frame, corners, ids)
             except Exception as e:
+                #print(f"Exception! {e}")
                 pass
-                # print(f"No markers found!: {e}")
 
             self.a_id = -1
             if not (ids is None):
@@ -186,9 +186,13 @@ class TelloUI(object):
                 self.tello.rotate_clockwise(360)
                 self.a_id = -1
             elif self.a_id == 1:
+                self.tello.set_speed(100)
                 self.tello.move_up(100)
-                self.tello.flip('b')
+                self.tello.rotate_clockwise(360)
+                self.tello.flip('f')
                 self.tello.move_down(100)
+                self.tello.flip('b')
+                self.tello.set_speed(self.speed)
                 self.a_id = -1
             elif self.a_id == 2:
                 self.tello.flip('f')
