@@ -22,12 +22,11 @@ z_I = constants['z_I']
 z_D = constants['z_D']
 
 # box size is the size of the target box's length, area of the box = box_size * box_size
-box_size = 150
+box_size = 50
 
 # declare tello object and connect drone to python file
 tello = Tello()
 tello.connect()
-
 # turn on stream
 tello.streamon()
 
@@ -54,7 +53,6 @@ x_pid.output_limits = (-50, 50)
 y_pid.output_limits = (-50, 50)
 z_pid.output_limits = (-50, 50)
 
-# this calculates the area using the shoelace theorem, from a stackoverflow post
 x = 0
 y = 0
 z = 0
@@ -131,20 +129,22 @@ while not land:
                 f = open('constants.json')
 
                 constants = json.load(f)
+                try:
+                    x_P = constants['x_P']
+                    x_I = constants['x_I']
+                    x_D = constants['x_D']
+                    y_P = constants['y_P']
+                    y_I = constants['y_I']
+                    y_D = constants['y_D']
+                    z_P = constants['z_P']
+                    z_I = constants['z_I']
+                    z_D = constants['z_D']
 
-                x_P = constants['x_P']
-                x_I = constants['x_I']
-                x_D = constants['x_D']
-                y_P = constants['y_P']
-                y_I = constants['y_I']
-                y_D = constants['y_D']
-                z_P = constants['z_P']
-                z_I = constants['z_I']
-                z_D = constants['z_D']
-
-                x_pid.tunings = (x_P, x_I, x_D)
-                y_pid.tunings = (y_P, y_I, y_D)
-                z_pid.tunings = (z_P, z_I, z_D)
+                    x_pid.tunings = (x_P, x_I, x_D)
+                    y_pid.tunings = (y_P, y_I, y_D)
+                    z_pid.tunings = (z_P, z_I, z_D)
+                except:
+                    print("values not correct")
                 # get average positions of the x and z positions
                 average_x_position = 0
                 average_z_position = 0
