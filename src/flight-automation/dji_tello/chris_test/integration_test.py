@@ -232,13 +232,13 @@ class TelloUI(object):
         self.tello.end()
 
     def keydown(self, key):
-        if key == pygame.K_UP:  # set forward velocity
+        if key == pygame.K_c:  # set forward velocity
             self.for_back_velocity = S
-        elif key == pygame.K_DOWN:  # set backward velocity
+        elif key == pygame.K_x:  # set backward velocity
             self.for_back_velocity = -S
-        elif key == pygame.K_LEFT:  # set left velocity
+        elif key == pygame.K_z:  # set left velocity
             self.left_right_velocity = -S
-        elif key == pygame.K_RIGHT:  # set right velocity
+        elif key == pygame.K_v:  # set right velocity
             self.left_right_velocity = S
         elif key == pygame.K_w:  # set up velocity
             self.up_down_velocity = S
@@ -250,9 +250,9 @@ class TelloUI(object):
             self.yaw_velocity = S
 
     def keyup(self, key):
-        if key == pygame.K_UP or key == pygame.K_DOWN:  # set zero forward/backward velocity
+        if key == pygame.K_c or key == pygame.K_v:  # set zero forward/backward velocity
             self.for_back_velocity = 0
-        elif key == pygame.K_LEFT or key == pygame.K_RIGHT:  # set zero left/right velocity
+        elif key == pygame.K_z or key == pygame.K_v:  # set zero left/right velocity
             self.left_right_velocity = 0
         elif key == pygame.K_w or key == pygame.K_s:  # set zero up/down velocity
             self.up_down_velocity = 0
