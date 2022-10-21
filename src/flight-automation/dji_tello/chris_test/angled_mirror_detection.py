@@ -11,7 +11,7 @@ S = 60
 # Frames per second of the pygame window display
 FPS = 120
 
-f = open('../constants.json')
+f = open('mirror_constants.json')
 
 constants = json.load(f)
 x_P = constants['x_P']
@@ -128,7 +128,7 @@ class TelloUI(object):
                     y_pid.auto_mode = True
 
                     # update constants
-                    f = open('constants.json')
+                    f = open('mirror_constants.json')
 
                     constants = json.load(f)
                     try:
@@ -181,10 +181,10 @@ class TelloUI(object):
                     # perform calculations
                     x_distance = average_x_position - x_center
                     final_x_movement = x_pid(x_distance)
-                    final_x_movement = -int(final_x_movement)
+                    final_x_movement = int(final_x_movement)
 
-
-                    final_y_movement = average_y_position - y_center
+                    y_distance = average_y_position - y_center
+                    final_y_movement = x_pid(y_distance)
                     final_y_movement = int(final_y_movement)
                     self.x = final_x_movement
                     self.y = final_y_movement
