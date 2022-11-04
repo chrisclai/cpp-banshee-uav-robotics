@@ -114,6 +114,7 @@ class TelloUI(object):
 
             frame = frame_read.frame
 
+
             # Find AR Markers
             try:
                 corners, ids = aruco_detect.findArucoMarkers(frame, 6, 50)

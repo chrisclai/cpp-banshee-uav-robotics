@@ -20,17 +20,21 @@ x_D = constants['x_D']
 y_P = constants['y_P']
 y_I = constants['y_I']
 y_D = constants['y_D']
+z_P = constants['z_P']
+z_I = constants['z_I']
+z_D = constants['z_D']
 
 
 # create the x & y axis pid's
 # PID comes from simple-pid, an online api
 x_pid = PID(x_P, x_I, x_D, setpoint=1)
 y_pid = PID(y_P, y_I, y_D, setpoint=1)
+z_pid = PID(z_P, z_I, z_D, setpoint=1)
 # set the limits
 x_pid.output_limits = (-50, 50)
 y_pid.output_limits = (-50, 50)
-
-box_size = 400
+z_pid.output_limits = (-50, 50)
+box_size = 200
 
 class TelloUI(object):
     """ Maintains the Tello display and moves it through the keyboard keys.
@@ -71,6 +75,7 @@ class TelloUI(object):
         self.send_rc_control = False
         self.x = 0
         self.y = 0
+        self.z = 0
         self.yaw = 0
         # create update timer
         pygame.time.set_timer(pygame.USEREVENT + 1, 1000 // FPS)
@@ -126,7 +131,7 @@ class TelloUI(object):
                 case 0:
                     x_pid.auto_mode = True
                     y_pid.auto_mode = True
-
+                    z_pid.auto_mode = True
                     # update constants
                     f = open('mirror_constants.json')
 
@@ -138,10 +143,13 @@ class TelloUI(object):
                         y_P = constants['y_P']
                         y_I = constants['y_I']
                         y_D = constants['y_D']
-
+                        z_P = constants['z_P']
+                        z_I = constants['z_I']
+                        z_D = constants['z_D']
 
                         x_pid.tunings = (x_P, x_I, x_D)
                         y_pid.tunings = (y_P, y_I, y_D)
+                        z_pid.tunings = (z_P, z_I, z_D)
 
                     except:
                         print("values not correct")
@@ -184,10 +192,15 @@ class TelloUI(object):
                     final_x_movement = int(final_x_movement)
 
                     y_distance = average_y_position - y_center
-                    final_y_movement = x_pid(y_distance)
+                    final_y_movement = y_pid(y_distance)
                     final_y_movement = int(final_y_movement)
+
+                    z_distance = area - (box_size * box_size)
+                    final_z_movement = z_pid(z_distance)
+                    final_z_movement = int(final_z_movement)
                     self.x = final_x_movement
                     self.y = final_y_movement
+                    self.z = final_z_movement
                     self.yaw = 0
                 case 1:
                     text = "State 1 detected. Bounce action initiated"
@@ -271,7 +284,7 @@ class TelloUI(object):
         # Render States
         if self.send_rc_control:
             if self.a_id == 0:
-                self.tello.send_rc_control(self.x, self.y, 0, self.yaw)
+                self.tello.send_rc_control(self.x, self.y, self.z, self.yaw)
                 self.a_id = -1
             elif self.a_id == 1:
                 #self.tello.move_up(100)
@@ -295,7 +308,7 @@ class TelloUI(object):
             else:
                 x_pid.auto_mode = False
                 y_pid.auto_mode = False
-
+                z_pid.auto_mode = False
 
                 self.tello.send_rc_control(self.left_right_velocity, self.for_back_velocity,
                                            self.up_down_velocity, self.yaw_velocity)
