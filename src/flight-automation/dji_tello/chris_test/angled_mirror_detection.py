@@ -34,12 +34,12 @@ z_pid = PID(z_P, z_I, z_D, setpoint=1)
 x_pid.output_limits = (-50, 50)
 y_pid.output_limits = (-50, 50)
 z_pid.output_limits = (-50, 50)
-box_size = 200
+box_size = 75
 
 class TelloUI(object):
     """ Maintains the Tello display and moves it through the keyboard keys.
         Press escape key to quit.
-        The controls are:
+        The controls are:.
             - T: Takeoff
             - L: Land
             - Arrow keys: Forward, backward, left and right.
