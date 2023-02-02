@@ -116,7 +116,7 @@ class TelloUI(object):
             frame = cv2.flip(frame, 1)
             # Find AR Markers
             try:
-                corners, ids = aruco_detect.findArucoMarkers(frame, 6, 50)
+                corners, ids = aruco_detect.findArucoMarkers(frame, 7, 50)
                 aruco_detect.centerloc(frame, corners, ids)
             except Exception as e:
                 pass
