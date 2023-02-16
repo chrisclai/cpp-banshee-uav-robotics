@@ -6,6 +6,7 @@ import time
 import aruco_detect
 import json
 from simple_pid import PID
+
 # Speed of the drone
 S = 60
 # Frames per second of the pygame window display
@@ -24,7 +25,6 @@ z_P = constants['z_P']
 z_I = constants['z_I']
 z_D = constants['z_D']
 
-
 # create the x & y axis pid's
 # PID comes from simple-pid, an online api
 x_pid = PID(x_P, x_I, x_D, setpoint=1)
@@ -35,6 +35,9 @@ x_pid.output_limits = (-50, 50)
 y_pid.output_limits = (-50, 50)
 z_pid.output_limits = (-50, 50)
 box_size = 75
+time_until_land = 5
+error_threshold = 100
+
 
 class TelloUI(object):
     """ Maintains the Tello display and moves it through the keyboard keys.
@@ -42,9 +45,9 @@ class TelloUI(object):
         The controls are:.
             - T: Takeoff
             - L: Land
-            - Arrow keys: Forward, backward, left and right.
-            - A and D: Counter clockwise and clockwise rotations (yaw)
-            - W and S: Up and down.
+            - W, A, S, D: Forward, backward, left and right.
+            - x and z: Counter clockwise and clockwise rotations (yaw)
+            - q and e: Up and down.
             - U: Flip forward
             - H: Flip left
             - J: Flip back
@@ -53,7 +56,14 @@ class TelloUI(object):
 
     def __init__(self):
         # Initialize pygame
+
         pygame.init()
+
+        # controls stuff
+        self.tracking = False
+        self.tracking_land = False
+        self.prev_within_threshold = False
+        self.start_time = 0.0
 
         # Create pygame window
         pygame.display.set_caption("TelloTV Live!")
@@ -71,7 +81,6 @@ class TelloUI(object):
 
         # Self State
         self.a_id = -1
-
         self.send_rc_control = False
         self.x = 0
         self.y = 0
@@ -81,8 +90,8 @@ class TelloUI(object):
         pygame.time.set_timer(pygame.USEREVENT + 1, 1000 // FPS)
 
     def run(self):
-
         self.tello.connect()
+
         self.tello.set_speed(self.speed)
 
         # In case streaming is on. This happens when we quit this program without the escape key.
@@ -116,7 +125,8 @@ class TelloUI(object):
             frame = cv2.flip(frame, 1)
             # Find AR Markers
             try:
-                corners, ids = aruco_detect.findArucoMarkers(frame, 7, 50)
+                # TODO: change from 6 to 7 depending on situation
+                corners, ids = aruco_detect.findArucoMarkers(frame, 6, 50)
                 aruco_detect.centerloc(frame, corners, ids)
             except Exception as e:
                 pass
@@ -150,6 +160,9 @@ class TelloUI(object):
                         x_pid.tunings = (x_P, x_I, x_D)
                         y_pid.tunings = (y_P, y_I, y_D)
                         z_pid.tunings = (z_P, z_I, z_D)
+                        # see if code is updating when I change "mirror_constants.json"
+                        cv2.putText(frame, str(x_P), (60, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
+                        cv2.putText(frame, str(y_P), (70, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
 
                     except:
                         print("values not correct")
@@ -172,32 +185,51 @@ class TelloUI(object):
 
                     # draw the red and green lines, along with the blue boxes
                     height, width = frame.shape[:2]
-                    y_center = height / 2
-                    y_center = int(y_center)
-                    cv2.line(frame, (0, y_center), (width, y_center), (0, 255, 0), 10)
+                    y_target = 600
+                    y_target = int(y_target)
+                    cv2.line(frame, (0, y_target), (width, y_target), (0, 255, 0), 10)
                     cv2.line(frame, (0, average_y_position), (width, average_y_position), (0, 0, 255), 10)
 
-                    x_center = width / 2
-                    x_center = int(x_center)
+                    x_target = width / 2
+                    x_target = int(x_target)
 
-                    cv2.line(frame, (x_center, 0), (x_center, height), (0, 255, 0), 10)
+                    cv2.line(frame, (x_target, 0), (x_target, height), (0, 255, 0), 10)
                     cv2.line(frame, (average_x_position, 0), (average_x_position, height), (0, 0, 255), 10)
                     half_box_size = int(box_size / 2)
-                    cv2.rectangle(frame, (x_center - half_box_size, y_center - half_box_size),
-                                  (x_center + half_box_size, y_center + half_box_size), (255, 0, 0), 10)
+                    cv2.rectangle(frame, (x_target - half_box_size, y_target - half_box_size),
+                                  (x_target + half_box_size, y_target + half_box_size), (255, 0, 0), 10)
 
                     # perform calculations
-                    x_distance = average_x_position - x_center
+                    x_distance = average_x_position - x_target
                     final_x_movement = x_pid(x_distance)
                     final_x_movement = int(final_x_movement)
 
-                    y_distance = average_y_position - y_center
+                    y_distance = average_y_position - y_target
                     final_y_movement = y_pid(y_distance)
                     final_y_movement = int(final_y_movement)
 
                     z_distance = area - (box_size * box_size)
                     final_z_movement = z_pid(z_distance)
                     final_z_movement = int(final_z_movement)
+
+                    # detect landing sequence
+                    error = abs(x_distance) + abs(y_distance)
+                    time_since_start = time.time() - self.start_time
+                    cv2.putText(frame, str(time_since_start), (40, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
+                    cv2.putText(frame, str(error), (30, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
+                    if error < error_threshold:
+                        if self.prev_within_threshold:
+                            if time_since_start > time_until_land:
+                                self.tracking_land = True
+                        else:
+                            self.prev_within_threshold = True
+                            self.start_time = time.time()
+                            self.tracking_land = False
+                    else:
+                        self.prev_within_threshold = False
+                        self.tracking_land = False
+
+                    # save calculations
                     self.x = final_x_movement
                     self.y = final_y_movement
                     self.z = final_z_movement
@@ -234,31 +266,33 @@ class TelloUI(object):
         self.tello.end()
 
     def keydown(self, key):
-        if key == pygame.K_c:  # set forward velocity
+        if key == pygame.K_w:  # set forward velocity
             self.for_back_velocity = S
-        elif key == pygame.K_x:  # set backward velocity
+        elif key == pygame.K_s:  # set backward velocity
             self.for_back_velocity = -S
-        elif key == pygame.K_z:  # set left velocity
+        elif key == pygame.K_a:  # set left velocity
             self.left_right_velocity = -S
-        elif key == pygame.K_v:  # set right velocity
+        elif key == pygame.K_d:  # set right velocity
             self.left_right_velocity = S
-        elif key == pygame.K_w:  # set up velocity
+        elif key == pygame.K_e:  # set up velocity
             self.up_down_velocity = S
-        elif key == pygame.K_s:  # set down velocity
+        elif key == pygame.K_q:  # set down velocity
             self.up_down_velocity = -S
-        elif key == pygame.K_a:  # set yaw counter clockwise velocity
+        elif key == pygame.K_z:  # set yaw counter clockwise velocity
             self.yaw_velocity = -S
-        elif key == pygame.K_d:  # set yaw clockwise velocity
+        elif key == pygame.K_x:  # set yaw clockwise velocity
             self.yaw_velocity = S
+        elif key == pygame.K_p:
+            self.tracking = True
 
     def keyup(self, key):
-        if key == pygame.K_c or key == pygame.K_v:  # set zero forward/backward velocity
+        if key == pygame.K_w or key == pygame.K_s:  # set zero forward/backward velocity
             self.for_back_velocity = 0
-        elif key == pygame.K_z or key == pygame.K_v:  # set zero left/right velocity
+        elif key == pygame.K_a or key == pygame.K_d:  # set zero left/right velocity
             self.left_right_velocity = 0
-        elif key == pygame.K_w or key == pygame.K_s:  # set zero up/down velocity
+        elif key == pygame.K_q or key == pygame.K_e:  # set zero up/down velocity
             self.up_down_velocity = 0
-        elif key == pygame.K_a or key == pygame.K_d:  # set zero yaw velocity
+        elif key == pygame.K_z or key == pygame.K_x:  # set zero yaw velocity
             self.yaw_velocity = 0
         elif key == pygame.K_t:  # takeoff
             self.tello.takeoff()
@@ -274,31 +308,34 @@ class TelloUI(object):
             self.tello.flip('b')
         elif key == pygame.K_k:  # flip right
             self.tello.flip('r')
+        elif key == pygame.K_p:
+            self.tracking = False
 
     def update(self):
         """
         Asynchronous Update Routine
         """
 
-
         # Render States
         if self.send_rc_control:
-            if self.a_id == 0:
+            if self.a_id == 0 and self.tracking == True:
+                if self.tracking_land:
+                    not self.tello.land()
                 self.tello.send_rc_control(self.x, self.y, self.z, self.yaw)
                 self.a_id = -1
             elif self.a_id == 1:
-                #self.tello.move_up(100)
-                #self.tello.flip('b')
-                #self.tello.move_down(100)
+                # self.tello.move_up(100)
+                # self.tello.flip('b')
+                # self.tello.move_down(100)
                 self.a_id = -1
             elif self.a_id == 2:
-                #self.tello.flip('f')
-                #time.sleep(1)
-                #self.tello.flip('b')
-                #time.sleep(1)
-                #self.tello.flip('l')
-                #time.sleep(1)
-                #self.tello.flip('r')
+                # self.tello.flip('f')
+                # time.sleep(1)
+                # self.tello.flip('b')
+                # time.sleep(1)
+                # self.tello.flip('l')
+                # time.sleep(1)
+                # self.tello.flip('r')
                 self.a_id = -1
             elif self.a_id == 3:
                 self.a_id = -1
