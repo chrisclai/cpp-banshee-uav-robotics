@@ -34,7 +34,7 @@ z_pid = PID(z_P, z_I, z_D, setpoint=1)
 x_pid.output_limits = (-50, 50)
 y_pid.output_limits = (-50, 50)
 z_pid.output_limits = (-50, 50)
-box_size = 75
+box_size = 60
 time_until_land = 5
 error_threshold = 100
 
@@ -161,8 +161,8 @@ class TelloUI(object):
                         y_pid.tunings = (y_P, y_I, y_D)
                         z_pid.tunings = (z_P, z_I, z_D)
                         # see if code is updating when I change "mirror_constants.json"
-                        cv2.putText(frame, str(x_P), (60, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
-                        cv2.putText(frame, str(y_P), (70, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
+                        cv2.putText(frame, str(x_P), (200, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
+                        cv2.putText(frame, str(y_P), (10, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
 
                     except:
                         print("values not correct")
@@ -185,7 +185,7 @@ class TelloUI(object):
 
                     # draw the red and green lines, along with the blue boxes
                     height, width = frame.shape[:2]
-                    y_target = 600
+                    y_target = height / 2
                     y_target = int(y_target)
                     cv2.line(frame, (0, y_target), (width, y_target), (0, 255, 0), 10)
                     cv2.line(frame, (0, average_y_position), (width, average_y_position), (0, 0, 255), 10)
@@ -215,8 +215,8 @@ class TelloUI(object):
                     # detect landing sequence
                     error = abs(x_distance) + abs(y_distance)
                     time_since_start = time.time() - self.start_time
-                    cv2.putText(frame, str(time_since_start), (40, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
-                    cv2.putText(frame, str(error), (30, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
+                    cv2.putText(frame, str(time_since_start), (10, 100), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
+                    cv2.putText(frame, str(error), (10, 150), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
                     if error < error_threshold:
                         if self.prev_within_threshold:
                             if time_since_start > time_until_land:
