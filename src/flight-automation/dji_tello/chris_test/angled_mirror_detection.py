@@ -34,7 +34,7 @@ z_pid = PID(z_P, z_I, z_D, setpoint=1)
 x_pid.output_limits = (-50, 50)
 y_pid.output_limits = (-50, 50)
 z_pid.output_limits = (-50, 50)
-box_size = 60
+box_size = 100
 time_until_land = 5
 error_threshold = 100
 

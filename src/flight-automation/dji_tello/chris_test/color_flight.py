@@ -22,7 +22,7 @@ purple_low = []
 purple_high = []
 
 # A required callback method
-def nothing(x):q
+def nothing(x):
     pass
 
 # declare tello object and connect drone to python file
